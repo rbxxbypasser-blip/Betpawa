@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>betPawa Console</title>
+<style>
+  :root{
+    --bg:#0b0d0f; --panel:#14181c; --line:#242b32; --txt:#e7ecef;
+    --dim:#8b979f; --acid:#9ce800; --warn:#ffb020; --bad:#ff4d4d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--txt);-webkit-font-smoothing:antialiased}
+  a{color:var(--acid)}
+  header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);
+         position:sticky;top:0;background:rgba(11,13,15,.92);backdrop-filter:blur(8px);z-index:10}
+  .brand{font-weight:800;letter-spacing:-.02em}
+  .brand span{color:var(--acid)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--bad)}
+  .dot.on{background:var(--acid);box-shadow:0 0 10px var(--acid)}
+  main{max-width:1080px;margin:0 auto;padding:22px 20px 80px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+  h2{font-size:15px;margin:0 0 12px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
+  label{display:block;font-size:12px;color:var(--dim);margin:10px 0 4px}
+  input,select{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
+               background:#0e1215;color:var(--txt);font-size:14px}
+  input:focus,select:focus{outline:2px solid var(--acid);outline-offset:-1px}
+  button{cursor:pointer;border:0;border-radius:9px;padding:11px 16px;font-weight:700;font-size:14px;
+         background:var(--acid);color:#0b0d0f}
+  button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+  .game{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .game h3{margin:0 0 4px;font-size:15px}
+  .tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+       padding:3px 7px;border-radius:5px;margin-bottom:8px}
+  .tag.reveal{background:rgba(156,232,0,.14);color:var(--acid)}
+  .tag.stat{background:rgba(255,176,32,.14);color:var(--warn)}
+  .tag.none{background:rgba(139,151,159,.14);color:var(--dim)}
+  .game p{margin:0 0 10px;color:var(--dim);font-size:12.5px}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  pre{background:#0a0c0e;border:1px solid var(--line);border-radius:9px;padding:12px;
+      overflow:auto;max-height:280px;margin:10px 0 0;white-space:pre-wrap;word-break:break-word}
+  .muted{color:var(--dim);font-size:12px}
+  .ok{color:var(--acid)} .err{color:var(--bad)}
+  .hide{display:none!important}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px}
+  .kv dt{color:var(--dim)}
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <div class="brand">betPawa<span>·</span>console</div>
+  <span class="muted" id="who"></span>
+  <span style="flex:1"></span>
+  <button class="ghost hide" id="btnLogout">Disconnect</button>
+</header>
+
+<main>
+  <!-- connect -->
+  <section class="panel" id="connectPanel">
+    <h2>1 · Connect</h2>
+    <p class="muted" style="margin-top:0">
+      Credentials go to <code>localhost</code> only, then straight to betpawa.ug.
+      The session cookie is kept by the proxy, never in this page.
+    </p>
+    <label for="phone">Mobile number (as registered, no +256)</label>
+    <input id="phone" inputmode="numeric" autocomplete="username" placeholder="7XXXXXXXX">
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
+    <label for="captcha">Turnstile token <span class="muted">(optional — only if login is rejected)</span></label>
+    <input id="captcha" placeholder="paste cf_clearance / turnstile token if needed">
+    <div class="row" style="margin-top:14px">
+      <button id="btnLogin">Log in</button>
+      <button class="ghost" id="btnStatus">Check status</button>
+    </div>
+    <pre id="loginOut" class="hide"></pre>
+  </section>
+
+  <!-- session -->
+  <section class="panel hide" id="sessionPanel">
+    <h2>2 · Session</h2>
+    <dl class="kv" id="sessionKv"></dl>
+    <div class="row" style="margin-top:14px">
+      <button class="ghost" id="btnBalance">Fetch balance</button>
+      <button class="ghost" id="btnProbe">Raw API call</button>
+    </div>
+    <pre id="apiOut" class="hide"></pre>
+  </section>
+
+  <!-- hacks -->
+  <section class="panel">
+    <h2>3 · Games &amp; what actually works</h2>
+    <p class="muted" style="margin-top:0">
+      Green = the round layout is knowable in advance. Amber = statistics only. Grey = pure RNG.
+      The green ones need the userscript installed — a website cannot read a cross-origin game iframe.
+    </p>
+    <div class="grid" id="games"></div>
+  </section>
+
+  <!-- userscript -->
+  <section class="panel">
+    <h2>4 · Install the revealer</h2>
+    <p class="muted" style="margin-top:0">
+      Install Tampermonkey, add <code>userscript/betpawa-hack.user.js</code>, then open a game.
+      The script runs inside the provider iframe, taps the WebSocket and paints safe cells over the board.
+    </p>
+    <div class="row">
+      <button class="ghost" id="btnCopyPath">Copy script path</button>
+      <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Get Tampermonkey</a>
+    </div>
+    <pre id="copyOut" class="hide"></pre>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const out = (el, v, cls) => { el.classList.remove('hide'); el.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2); el.className = cls || ''; };
+
+/* Game table. `tag` drives the colour; `how` is the honest explanation. */
+const GAMES = [
+  ['Tower', 'reveal', 'Climb game. Safe cells per level are pushed in the round state so the board can render — the script reads them and outlines the safe ones.', '/casino/category/crash'],
+  ['Mines', 'reveal', 'Same family. Mine positions come down with the round payload; the script flags them before you tap.', '/casino/category/crash'],
+  ['Aviator', 'stat', 'Crash point derives from a server seed revealed only after the round. Script logs the hash chain + multipliers and calls a cash-out band. Not deterministic.', '/aviator-crash-game'],
+  ['JetX', 'stat', 'Same as Aviator, Smartsoft RNG. Multiplier history only.', '/casino/category/crash'],
+  ['Air Ace', 'stat', 'Crash variant, 4x bet ribbon. History only.', '/casino/category/crash'],
+  ['Wheel of Luck 2', 'stat', 'Segment outcome is server-side per spin. No reveal.', '/casino/category/crash'],
+  ['Fortune Miner', 'stat', 'Slot-style. RTP is fixed; nothing to reveal.', '/casino'],
+  ['Multi Hot 5', 'none', '3x3 slot. Pure RTP.', '/casino'],
+  ['Navigator', 'none', 'Jelly slot. Pure RTP.', '/casino'],
+  ['Casino Island', 'none', 'Slot. Pure RTP.', '/casino'],
+];
+
+$('games').innerHTML = GAMES.map(([name, tag, how, href]) => `
+  <div class="game">
+    <span class="tag ${tag}">${tag === 'reveal' ? 'revealable' : tag === 'stat' ? 'stats only' : 'rng'}</span>
+    <h3>${name}</h3>
+    <p>${how}</p>
+    <a href="https://www.betpawa.ug${href}" target="_blank" rel="noreferrer">open on betpawa →</a>
+  </div>`).join('');
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  let body; try { body = await r.json(); } catch { body = await r.text(); }
+  return { status: r.status, body };
+}
+
+async function refresh() {
+  const { body } = await api('/api/status');
+  const on = Boolean(body.loggedIn);
+  $('dot').classList.toggle('on', on);
+  $('who').textContent = on ? (body.user?.phone || 'connected') : 'not connected';
+  $('btnLogout').classList.toggle('hide', !on);
+  $('sessionPanel').classList.toggle('hide', !on);
+  $('sessionKv').innerHTML = on ? `
+    <dt>phone</dt><dd>${body.user?.phone || '—'}</dd>
+    <dt>userUuid</dt><dd><code>${body.user?.userUuid || '—'}</code></dd>
+    <dt>auth route</dt><dd><code>${body.authPath || '—'}</code></dd>
+    <dt>balance route</dt><dd><code>${body.balancePath || 'unresolved'}</code></dd>` : '';
+  return on;
+}
+
+$('btnLogin').onclick = async () => {
+  const b = $('btnLogin'); b.disabled = true; b.textContent = 'Logging in…';
+  const { status, body } = await api('/api/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      phone: $('phone').value.trim(),
+      password: $('password').value,
+      captchaToken: $('captcha').value.trim() || undefined,
+    }),
+  });
+  out($('loginOut'), body, status < 400 ? 'ok' : 'err');
+  b.disabled = false; b.textContent = 'Log in';
+  if (status < 400) { $('password').value = ''; refresh(); }
+};
+
+$('btnStatus').onclick = async () => out($('loginOut'), (await api('/api/status')).body, 'muted');
+$('btnLogout').onclick = async () => { await api('/api/logout'); refresh(); };
+$('btnBalance').onclick = async () => out($('apiOut'), (await api('/api/balance')).body, 'muted');
+
+$('btnProbe').onclick = async () => {
+  const p = prompt('API path', '/api/user/balance');
+  if (!p) return;
+  out($('apiOut'), (await api('/api/bp?path=' + encodeURIComponent(p))).body, 'muted');
+};
+
+$('btnCopyPath').onclick = async () => {
+  const p = 'userscript/betpawa-hack.user.js';
+  try { await navigator.clipboard.writeText(p); out($('copyOut'), 'copied: ' + p, 'ok'); }
+  catch { out($('copyOut'), p, 'muted'); }
+};
+
+refresh();
+</script>
+</body>
+</html>
