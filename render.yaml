@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: betpawa-console
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.1
+      - key: INGEST_TOKEN
+        generateValue: true
+      - key: BP_COOKIE
+        sync: false

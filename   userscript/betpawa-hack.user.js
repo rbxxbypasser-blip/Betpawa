@@ -18,7 +18,40 @@
   'use strict';
   if (window.__bpHack) return;
   window.__bpHack = { frames: [], boards: [], log: [] };
+/* Console wiring. Set the URL once; it is remembered in localStorage. */
+  let CONSOLE = localStorage.getItem('bpConsoleUrl') || '';
+  if (!CONSOLE) {
+    CONSOLE = (prompt('Console URL (e.g. https://your-app.onrender.com)') || '').replace(/\/+$/, '');
+    if (CONSOLE) localStorage.setItem('bpConsoleUrl', CONSOLE);
+  }
+  const TOKEN = localStorage.getItem('bpIngestToken') || '';
+  if (CONSOLE && !TOKEN && /onrender\.com/.test(CONSOLE)) {
+    const t = prompt('Ingest token (Render env var INGEST_TOKEN)') || '';
+    if (t) localStorage.setItem('bpIngestToken', t);
+  }
 
+  let pinned = [];
+  async function loadConfig() {
+    if (!CONSOLE) return;
+    try {
+      const r = await fetch(CONSOLE + '/api/config', { mode: 'cors' });
+      const j = await r.json();
+      pinned = (j.config && j.config.pinnedPaths) || [];
+    } catch {}
+  }
+  loadConfig();
+  setInterval(loadConfig, 15000);
+
+  function upload(url, dir, raw) {
+    if (!CONSOLE || !raw) return;
+    fetch(CONSOLE + '/api/ingest' + (TOKEN ? '?t=' + encodeURIComponent(TOKEN) : ''), {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: String(url || location.href), dir, raw: raw.slice(0, 60000) }),
+      keepalive: true,
+    }).catch(() => {});
+  }
   /* ------------------------------------------------------------ WebSocket tap */
 
   const Native = window.WebSocket;

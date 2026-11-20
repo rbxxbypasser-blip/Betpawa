@@ -1,0 +1,10 @@
+{
+  "name": "betpawa-console",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Local/remote console for betpawa.ug with live frame capture and round revealer",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

@@ -23,14 +23,19 @@
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
   h2{font-size:15px;margin:0 0 12px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim)}
   label{display:block;font-size:12px;color:var(--dim);margin:10px 0 4px}
-  input,select{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
-               background:#0e1215;color:var(--txt);font-size:14px}
-  input:focus,select:focus{outline:2px solid var(--acid);outline-offset:-1px}
+  input,textarea,select{width:100%;padding:11px 12px;border-radius:9px;border:1px solid var(--line);
+               background:#0e1215;color:var(--txt);font-size:14px;font-family:inherit}
+  textarea{min-height:90px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  input:focus,textarea:focus{outline:2px solid var(--acid);outline-offset:-1px}
   button{cursor:pointer;border:0;border-radius:9px;padding:11px 16px;font-weight:700;font-size:14px;
          background:var(--acid);color:#0b0d0f}
   button.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+  button.tiny{padding:5px 9px;font-size:12px;font-weight:600}
   button:disabled{opacity:.5;cursor:not-allowed}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tabs button{border:1px solid var(--line);background:transparent;color:var(--dim)}
+  .tabs button.active{background:var(--acid);color:#0b0d0f;border-color:var(--acid)}
   .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
   .game{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
   .game h3{margin:0 0 4px;font-size:15px}
@@ -42,12 +47,18 @@
   .game p{margin:0 0 10px;color:var(--dim);font-size:12.5px}
   code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
   pre{background:#0a0c0e;border:1px solid var(--line);border-radius:9px;padding:12px;
-      overflow:auto;max-height:280px;margin:10px 0 0;white-space:pre-wrap;word-break:break-word}
+      overflow:auto;max-height:300px;margin:10px 0 0;white-space:pre-wrap;word-break:break-word}
   .muted{color:var(--dim);font-size:12px}
   .ok{color:var(--acid)} .err{color:var(--bad)}
   .hide{display:none!important}
   .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12.5px}
   .kv dt{color:var(--dim)}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;
+        letter-spacing:.08em;text-transform:uppercase;color:var(--bad)}
+  .live.on{color:var(--acid)}
+  .cand{display:flex;gap:8px;align-items:center;margin:5px 0;flex-wrap:wrap}
+  .steps{margin:0;padding-left:18px;color:var(--dim);font-size:12.5px}
+  .steps li{margin:5px 0}
 </style>
 </head>
 <body>
@@ -60,27 +71,46 @@
 </header>
 
 <main>
-  <!-- connect -->
+  <!-- 1 connect -->
   <section class="panel" id="connectPanel">
     <h2>1 · Connect</h2>
-    <p class="muted" style="margin-top:0">
-      Credentials go to <code>localhost</code> only, then straight to betpawa.ug.
-      The session cookie is kept by the proxy, never in this page.
-    </p>
-    <label for="phone">Mobile number (as registered, no +256)</label>
-    <input id="phone" inputmode="numeric" autocomplete="username" placeholder="7XXXXXXXX">
-    <label for="password">Password</label>
-    <input id="password" type="password" autocomplete="current-password">
-    <label for="captcha">Turnstile token <span class="muted">(optional — only if login is rejected)</span></label>
-    <input id="captcha" placeholder="paste cf_clearance / turnstile token if needed">
-    <div class="row" style="margin-top:14px">
-      <button id="btnLogin">Log in</button>
-      <button class="ghost" id="btnStatus">Check status</button>
+    <div class="tabs">
+      <button class="active" id="tabPw">Password</button>
+      <button id="tabCookie">Cookie (no token needed)</button>
     </div>
+
+    <div id="panePw">
+      <label for="phone">Mobile number as registered (no +256)</label>
+      <input id="phone" inputmode="numeric" autocomplete="username" placeholder="7XXXXXXXX">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password">
+      <label for="captcha">Turnstile token — leave blank, only fill if login is rejected</label>
+      <input id="captcha" placeholder="optional">
+      <div class="row" style="margin-top:14px">
+        <button id="btnLogin">Log in</button>
+        <button class="ghost" id="btnStatus">Check status</button>
+      </div>
+    </div>
+
+    <div id="paneCookie" class="hide">
+      <ol class="steps">
+        <li>In another tab, log in to <a href="https://www.betpawa.ug/login" target="_blank" rel="noreferrer">betpawa.ug</a> normally.</li>
+        <li>Press F12 → <b>Network</b> tab → reload the page.</li>
+        <li>Click any request to <code>betpawa.ug</code>.</li>
+        <li>Under <b>Request Headers</b>, find <code>cookie:</code> and copy the whole value.</li>
+        <li>Paste it below and press Save.</li>
+      </ol>
+      <label for="cookie">Cookie header value</label>
+      <textarea id="cookie" placeholder="SESSION=...; other=..."></textarea>
+      <div class="row" style="margin-top:14px">
+        <button id="btnCookie">Save cookie</button>
+      </div>
+    </div>
+
     <pre id="loginOut" class="hide"></pre>
   </section>
 
-  <!-- session -->
+  <!-- 2 session -->
   <section class="panel hide" id="sessionPanel">
     <h2>2 · Session</h2>
     <dl class="kv" id="sessionKv"></dl>
@@ -91,54 +121,75 @@
     <pre id="apiOut" class="hide"></pre>
   </section>
 
-  <!-- hacks -->
+  <!-- 3 games -->
   <section class="panel">
-    <h2>3 · Games &amp; what actually works</h2>
+    <h2>3 · Games</h2>
     <p class="muted" style="margin-top:0">
-      Green = the round layout is knowable in advance. Amber = statistics only. Grey = pure RNG.
-      The green ones need the userscript installed — a website cannot read a cross-origin game iframe.
+      Green = layout is on the wire and readable. Amber = statistics only. Grey = pure RNG.
     </p>
     <div class="grid" id="games"></div>
   </section>
 
-  <!-- userscript -->
+  <!-- 4 revealer setup -->
   <section class="panel">
-    <h2>4 · Install the revealer</h2>
-    <p class="muted" style="margin-top:0">
-      Install Tampermonkey, add <code>userscript/betpawa-hack.user.js</code>, then open a game.
-      The script runs inside the provider iframe, taps the WebSocket and paints safe cells over the board.
-    </p>
+    <h2>4 · Revealer setup</h2>
+    <ol class="steps">
+      <li>Install <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Tampermonkey</a>.</li>
+      <li>Add the script <code>userscript/betpawa-hack.user.js</code> (New script → paste → save).</li>
+      <li>Copy the URL below — the script asks for it once, paste it there.</li>
+      <li>Open any game. The panel appears and starts sending frames to section 5.</li>
+    </ol>
+    <label>Console URL for the script</label>
     <div class="row">
-      <button class="ghost" id="btnCopyPath">Copy script path</button>
-      <a href="https://www.tampermonkey.net/" target="_blank" rel="noreferrer">Get Tampermonkey</a>
+      <input id="connectUrl" readonly>
+      <button class="ghost" id="btnCopyUrl">Copy</button>
     </div>
     <pre id="copyOut" class="hide"></pre>
+  </section>
+
+  <!-- 5 capture -->
+  <section class="panel">
+    <h2>5 · Live capture <span class="live" id="liveBadge">● idle</span></h2>
+    <p class="muted" style="margin-top:0">
+      Starts by itself. Click <b>pin</b> on whichever candidate looks like the board —
+      it saves instantly and the script starts greening that field. No Save button.
+    </p>
+    <div class="row">
+      <button class="ghost tiny" id="btnPause">Pause</button>
+      <button class="ghost tiny" id="btnClear">Clear</button>
+      <span class="muted" id="capCount">0 frames</span>
+    </div>
+    <div id="cands" style="margin-top:12px"></div>
+    <pre id="frameOut" class="hide"></pre>
+    <pre id="capOut" class="hide"></pre>
   </section>
 </main>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const out = (el, v, cls) => { el.classList.remove('hide'); el.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2); el.className = cls || ''; };
+const out = (el, v, cls) => {
+  el.classList.remove('hide');
+  el.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2);
+  if (cls) el.className = cls;
+};
 
-/* Game table. `tag` drives the colour; `how` is the honest explanation. */
 const GAMES = [
-  ['Tower', 'reveal', 'Climb game. Safe cells per level are pushed in the round state so the board can render — the script reads them and outlines the safe ones.', '/casino/category/crash'],
-  ['Mines', 'reveal', 'Same family. Mine positions come down with the round payload; the script flags them before you tap.', '/casino/category/crash'],
-  ['Aviator', 'stat', 'Crash point derives from a server seed revealed only after the round. Script logs the hash chain + multipliers and calls a cash-out band. Not deterministic.', '/aviator-crash-game'],
-  ['JetX', 'stat', 'Same as Aviator, Smartsoft RNG. Multiplier history only.', '/casino/category/crash'],
-  ['Air Ace', 'stat', 'Crash variant, 4x bet ribbon. History only.', '/casino/category/crash'],
-  ['Wheel of Luck 2', 'stat', 'Segment outcome is server-side per spin. No reveal.', '/casino/category/crash'],
-  ['Fortune Miner', 'stat', 'Slot-style. RTP is fixed; nothing to reveal.', '/casino'],
-  ['Multi Hot 5', 'none', '3x3 slot. Pure RTP.', '/casino'],
-  ['Navigator', 'none', 'Jelly slot. Pure RTP.', '/casino'],
-  ['Casino Island', 'none', 'Slot. Pure RTP.', '/casino'],
+  ['Tower', 'reveal', 'Climb game. Safe cells per level ride along with the round state — read them and the pick stops being a gamble.', '/casino/category/crash'],
+  ['Mines', 'reveal', 'Same family. Mine positions come with the round payload.', '/casino/category/crash'],
+  ['Aviator', 'stat', 'Crash point derives from a server seed shown only after the round. Script logs the hash chain and multipliers.', '/aviator-crash-game'],
+  ['JetX', 'stat', 'Smartsoft RNG, same shape as Aviator. History only.', '/casino/category/crash'],
+  ['Air Ace', 'stat', 'Crash variant. History only.', '/casino/category/crash'],
+  ['Wheel of Luck 2', 'stat', 'Server-side segment per spin.', '/casino/category/crash'],
+  ['Fortune Miner', 'stat', 'Slot. Fixed RTP.', '/casino'],
+  ['Multi Hot 5', 'none', '3x3 slot, pure RTP.', '/casino'],
+  ['Navigator', 'none', 'Jelly slot, pure RTP.', '/casino'],
+  ['Casino Island', 'none', 'Slot, pure RTP.', '/casino'],
 ];
 
 $('games').innerHTML = GAMES.map(([name, tag, how, href]) => `
   <div class="game">
     <span class="tag ${tag}">${tag === 'reveal' ? 'revealable' : tag === 'stat' ? 'stats only' : 'rng'}</span>
-    <h3>${name}</h3>
-    <p>${how}</p>
+    <h3>${name}</h3><p>${how}</p>
     <a href="https://www.betpawa.ug${href}" target="_blank" rel="noreferrer">open on betpawa →</a>
   </div>`).join('');
 
@@ -147,6 +198,16 @@ async function api(path, opts) {
   let body; try { body = await r.json(); } catch { body = await r.text(); }
   return { status: r.status, body };
 }
+
+/* tabs */
+$('tabPw').onclick = () => {
+  $('tabPw').classList.add('active'); $('tabCookie').classList.remove('active');
+  $('panePw').classList.remove('hide'); $('paneCookie').classList.add('hide');
+};
+$('tabCookie').onclick = () => {
+  $('tabCookie').classList.add('active'); $('tabPw').classList.remove('active');
+  $('paneCookie').classList.remove('hide'); $('panePw').classList.add('hide');
+};
 
 async function refresh() {
   const { body } = await api('/api/status');
@@ -160,14 +221,15 @@ async function refresh() {
     <dt>userUuid</dt><dd><code>${body.user?.userUuid || '—'}</code></dd>
     <dt>auth route</dt><dd><code>${body.authPath || '—'}</code></dd>
     <dt>balance route</dt><dd><code>${body.balancePath || 'unresolved'}</code></dd>` : '';
+  const url = `${location.origin}/api/ingest${body.ingestTokenRequired ? '?t=YOUR_TOKEN' : ''}`;
+  $('connectUrl').value = url;
   return on;
 }
 
 $('btnLogin').onclick = async () => {
   const b = $('btnLogin'); b.disabled = true; b.textContent = 'Logging in…';
   const { status, body } = await api('/api/login', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       phone: $('phone').value.trim(),
       password: $('password').value,
@@ -179,23 +241,102 @@ $('btnLogin').onclick = async () => {
   if (status < 400) { $('password').value = ''; refresh(); }
 };
 
+$('btnCookie').onclick = async () => {
+  const raw = $('cookie').value.trim();
+  if (!raw) return;
+  const { status, body } = await api('/api/cookie', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cookie: raw }),
+  });
+  out($('loginOut'), body, status < 400 ? 'ok' : 'err');
+  if (status < 400) { $('cookie').value = ''; refresh(); }
+};
+
 $('btnStatus').onclick = async () => out($('loginOut'), (await api('/api/status')).body, 'muted');
 $('btnLogout').onclick = async () => { await api('/api/logout'); refresh(); };
 $('btnBalance').onclick = async () => out($('apiOut'), (await api('/api/balance')).body, 'muted');
-
 $('btnProbe').onclick = async () => {
   const p = prompt('API path', '/api/user/balance');
-  if (!p) return;
-  out($('apiOut'), (await api('/api/bp?path=' + encodeURIComponent(p))).body, 'muted');
+  if (p) out($('apiOut'), (await api('/api/bp?path=' + encodeURIComponent(p))).body, 'muted');
+};
+$('btnCopyUrl').onclick = async () => {
+  try { await navigator.clipboard.writeText($('connectUrl').value); out($('copyOut'), 'copied', 'ok'); }
+  catch { $('connectUrl').select(); out($('copyOut'), 'select and copy manually', 'muted'); }
 };
 
-$('btnCopyPath').onclick = async () => {
-  const p = 'userscript/betpawa-hack.user.js';
-  try { await navigator.clipboard.writeText(p); out($('copyOut'), 'copied: ' + p, 'ok'); }
-  catch { out($('copyOut'), p, 'muted'); }
+/* ---------- live capture, automatic ---------- */
+let since = 0, timer = null, paused = false, total = 0;
+
+async function poll() {
+  if (paused) return;
+  try {
+    const { body } = await api('/api/frames?since=' + since);
+    if (!body.ok) return;
+    if (body.last) since = Math.max(since, body.last);
+    if (!body.frames.length) return;
+
+    total += body.frames.length;
+    $('capCount').textContent = total + ' frames';
+
+    const lines = body.frames.slice(-25).map((f) =>
+      `[${f.dir}] ${f.url ? f.url.slice(0, 70) : '-'}\n${f.raw}`).join('\n\n');
+    out($('frameOut'), lines, 'muted');
+    $('frameOut').scrollTop = $('frameOut').scrollHeight;
+
+    const seen = new Set(), rows = [];
+    for (const f of body.frames) {
+      let parsed; try { parsed = JSON.parse(f.raw); } catch { continue; }
+      (function walk(n, p) {
+        if (rows.length > 30 || !n || typeof n !== 'object') return;
+        if (Array.isArray(n)) {
+          if (n.length >= 2 && n.length <= 40 &&
+              n.every((v) => ['boolean', 'number', 'string'].includes(typeof v))) {
+            const key = p.join('.');
+            if (!seen.has(key)) { seen.add(key); rows.push({ key, sample: n.slice(0, 10) }); }
+          }
+          n.forEach((v, i) => walk(v, p.concat(String(i)))); return;
+        }
+        for (const [k, v] of Object.entries(n)) walk(v, p.concat(k));
+      })(parsed, []);
+    }
+
+    if (rows.length) {
+      $('cands').innerHTML = rows.map((r) => `
+        <div class="cand">
+          <button class="ghost tiny pin" data-path="${r.key}">pin</button>
+          <code>${r.key}</code>
+          <span class="muted">${JSON.stringify(r.sample)}</span>
+        </div>`).join('');
+      document.querySelectorAll('.pin').forEach((b) => {
+        b.onclick = async () => {
+          const { body: cfg } = await api('/api/config', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ pinnedPaths: [b.dataset.path] }),
+          });
+          out($('capOut'), 'pinned → ' + b.dataset.path + ' (script picks it up within 15s)', 'ok');
+        };
+      });
+    }
+
+    $('liveBadge').classList.add('on');
+    $('liveBadge').textContent = '● live';
+  } catch { /* server asleep, keep trying */ }
+}
+
+$('btnPause').onclick = () => {
+  paused = !paused;
+  $('btnPause').textContent = paused ? 'Resume' : 'Pause';
+  $('liveBadge').classList.toggle('on', !paused);
+  $('liveBadge').textContent = paused ? '● paused' : '● live';
+};
+$('btnClear').onclick = async () => {
+  await api('/api/frames/clear');
+  since = 0; total = 0; $('capCount').textContent = '0 frames';
+  out($('frameOut'), '', 'muted'); $('cands').innerHTML = '';
 };
 
 refresh();
+timer = setInterval(poll, 1200);
 </script>
 </body>
 </html>
